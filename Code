@@ -1,0 +1,178 @@
+import edu.princeton.cs.algs4.In;
+import edu.princeton.cs.algs4.StdOut;
+import edu.princeton.cs.algs4.WeightedQuickUnionUF;
+
+// Models an N-by-N percolation system.
+public class Percolation {
+
+	int gridSize; //declares an int gridsize
+    boolean[][] grid;
+    WeightedQuickUnionUF connection;
+
+	// Create an N-by-N grid, with all sites blocked.
+    public Percolation(int gridSize) {
+        this.gridSize = gridSize; //sets gridsize to a size of int 
+        grid = new boolean[gridSize][gridSize];
+        connection = new WeightedQuickUnionUF(gridSize*gridSize); //creates new unionfind datastructure to mimic the grid
+
+
+        
+    }
+
+
+
+
+    // Open site (i, j) if it is not open already. if a site is open it will be represented as true in the grid. 
+    public void open(int i, int j) {
+    	if (i > gridSize - 1 || j > gridSize - 1) {
+    		throw new java.lang.IndexOutOfBoundsException("Your arguments are too large");
+    	}
+
+    	else if (i < 0 || j < 0) {
+    		throw new java.lang.IllegalArgumentException("Your arguments cannot be less than 0");
+    	}
+
+        for (int row = 0; row < gridSize; row++) { //runs through the grid array, setting the i, j value to true. 
+            for (int col = 0; col < gridSize; col++) {
+                grid[i][j] = true;
+            }
+        }
+
+    	       
+    }
+
+    // Is site (i, j) open?
+    public boolean isOpen(int i, int j) { //checks if on the array, i,j is true;
+    	if (i >= gridSize || j >= gridSize) {
+    		throw new java.lang.IndexOutOfBoundsException("Your arguments are too large (isOpen)");
+    	}
+
+    	else if (i < 0 || j < 0) {
+    		throw new java.lang.IllegalArgumentException("Your arguments cannot be less than 0");
+    	}
+
+    	//does the actual checking
+        if (grid[i][j] == true) { //returns true if grid[i][j] is open. 
+            return true;
+        }
+
+        
+        return false; //default returns false because don't need an else statement because there are only two possible outcomes. 
+        
+    }
+
+    // Is site (i, j) full? 
+    public boolean isFull(int i, int j) { //i and j are from the GRID array format, NOT the UnionFind format. 
+    	if (i > gridSize - 1 || j > gridSize - 1) { //needs to be gridSize-1 because in the actual array, gridSize is already out of bounds
+    		throw new java.lang.IndexOutOfBoundsException("Your arguments are too large (full)");
+    	}
+
+    	if (i < 0 || j < 0) {
+    		throw new java.lang.IllegalArgumentException("Your arguments cannot be less than 0");
+    	}
+
+        for (int row = 0; row < grid.length; row++) { //runs through the grid array. connects the sites from left to right
+            for (int col = 0; col < grid[row].length; col++) {
+
+                if (col+1==gridSize) {
+                    continue;
+                }
+                //System.out.println("row: " + row + ", col: " + col);
+                if (isOpen(row, col) && isOpen(row, col+1)) { //tests if the site and the one next to it is open
+                    connection.union(encode(row, col), encode (row, col+1)); //connects the site with the one to its right
+                }
+            }
+        }
+
+        //need to seperate the two connections because otherwise the rightmost column will never connect with sites below it and the bottommost row won't ever connect left to right. 
+
+        for (int row = 0; row < grid.length; row++) { //runs through the grid array. connects the sites with the one below it. 
+            for (int col = 0; col < grid[row].length; col++) {
+
+
+                if (row + 1 == gridSize) {
+                    continue;
+                }
+
+                if (isOpen(row, col) && isOpen(row+1, col)) { //tests if the site and the one below it is open 
+                    connection.union(encode(row, col), encode (row+1, col)); //connects the site with the one below it. 
+                }
+            }
+        }
+        
+        for (int topRow = 0; topRow < gridSize; topRow++) { //runs through the top row of the uf. 
+            if (connection.connected(encode(i, j), topRow)) { //tests if the top row uf is connected to the site i, j. 
+                return true; //returns true if it is connected because that means that the site is full. 
+            }
+        }
+
+        return false; //returns false otherwise because only in very specific instances is the percolation full. 
+
+	}
+
+    // Does the system percolate?
+    public boolean percolates() { //calls the isFull method but plugs in values from the bottom row to see if they are connected. Format of i is in grid coordinate format
+        for (int col = 0; col < gridSize; col++) { //runs through the columns
+            if (isFull(gridSize-1, col)) { //leaves gridSize-1 in the bottom row. row doesn't change when testing if it's full because it only percolates if bottom to top is connected
+                return true; //if the site is full it will return true
+            }
+        }
+        return false; //assumes that the site doesn't percolate. 
+    }
+		
+
+
+    // Number of open sites.
+    public int numberOfOpenSites() {
+        int openSites = 0; //auotmatically assumes that there are no open sites
+
+
+        for (int row = 0; row < gridSize; row++) { //cycles through the grid array
+            for (int col = 0; col < gridSize; col++) {
+                if(isOpen(row, col)) { //tests if the individual site is open
+                    openSites++; //if it is open, increments open sites by one
+                }
+            }
+        }
+
+        return openSites; //returns the number of open sites there are. 
+
+    }
+
+
+    
+
+    // An integer ID (1...N) for site (i, j).
+    private int encode(int i, int j) { //converts from array coordinates to the uf list index. 
+		return i*gridSize+j;
+    }
+   
+
+    // Test client.
+        public static void main(String[] args) {
+        String filename = args[0];
+        In in = new In(filename);
+        int N = in.readInt();
+        Percolation perc = new Percolation(N);
+        while (!in.isEmpty()) {
+            int i = in.readInt();
+            int j = in.readInt();
+            perc.open(i, j);
+        }
+        StdOut.println(perc.numberOfOpenSites() + " open sites");
+        if (perc.percolates()) {
+            StdOut.println("percolates");
+        }
+        else {
+            StdOut.println("does not percolate");
+        }
+        
+        // Check if site (i, j) optionally specified on the command line
+        // is full.
+        if (args.length == 3) {
+            int i = Integer.parseInt(args[1]);
+            int j = Integer.parseInt(args[2]);
+            StdOut.println(perc.isFull(i, j));
+        }
+    }
+}
